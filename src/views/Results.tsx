@@ -39,6 +39,8 @@ export function Results({
   const t = results.totals;
   const palm = t.strong + t.possible;
   const other = results.machines.find((m) => !m.this_computer);
+  const gaps = useMemo(() => realGaps(results, info.home, false), [results, info.home]);
+  const gapsListed = useMemo(() => realGaps(results, info.home, true), [results, info.home]);
 
   const homeFor = (f: FileView) => (results.machines[f.machine]?.this_computer ? info.home : null);
   const where = (f: FileView) => {
@@ -87,7 +89,7 @@ export function Results({
         <Stat value={t.possible} label="Possible" />
         <Stat value={t.inconclusive} label="Couldn't check inside" tone={t.inconclusive ? "warn" : undefined} />
         <Stat value={t.cloud_only} label="Only in the cloud" />
-        <Stat value={t.issues} label="Places it couldn't look" tone={t.issues ? "warn" : undefined} />
+        <Stat value={gaps} label="Places it couldn't look" tone={gaps ? "warn" : undefined} />
       </div>
 
       {!other && (
@@ -103,7 +105,7 @@ export function Results({
           { id: "palm", label: "Palm-related", count: results.candidates.length },
           { id: "files", label: "All files", count: results.files.length },
           { id: "duplicates", label: "Copies & versions", count: results.clusters.length + results.families.length },
-          { id: "gaps", label: "Gaps", count: t.issues + t.cloud_only },
+          { id: "gaps", label: "Gaps", count: gapsListed },
           { id: "laptops", label: "Laptops", count: results.machines.length },
         ]}
       />
@@ -349,18 +351,48 @@ function DuplicatesTab({ results, where, onOpen }: { results: R; where: Where; o
   );
 }
 
-const ISSUE_ORDER: IssueKind[] = ["permission_denied", "cloud_only", "damaged", "unreadable", "archive_limit", "too_large", "vanished", "skipped"];
+type GapKind = IssueKind | "system_locked";
+
+const GAP_ORDER: GapKind[] = ["permission_denied", "cloud_only", "damaged", "unreadable", "archive_limit", "too_large", "vanished", "system_locked", "skipped"];
+
+const SYSTEM_LOCKED = {
+  label: "System folders only an administrator can open",
+  advice: "These belong to the operating system or to other accounts on the computer, not to your work. Nothing to do.",
+};
+
+/** Inside someone's own account folder, where locked places can hold their work. */
+function isPersonal(path: string, home: string | null): boolean {
+  if (home && (path.startsWith(home + "/") || path.startsWith(home + "\\"))) return true;
+  const mac = path.match(/^\/Users\/([^/]+)\//);
+  const win = path.match(/^[A-Za-z]:\\Users\\([^\\]+)\\/);
+  const account = (mac ?? win)?.[1]?.toLowerCase();
+  return account !== undefined && !["shared", "public", "default", "default user", "all users"].includes(account);
+}
+
+function gapKind(i: R["issues"][number], results: R, home: string | null): GapKind {
+  const own = results.machines[i.machine]?.this_computer ? home : null;
+  return i.kind === "permission_denied" && !isPersonal(i.path, own) ? "system_locked" : i.kind;
+}
+
+/** Gaps that could hide her work: not system folders, not deliberate skips. */
+function realGaps(results: R, home: string | null, withCloud: boolean): number {
+  const ignore: GapKind[] = withCloud ? ["skipped", "system_locked"] : ["skipped", "system_locked", "cloud_only"];
+  return results.issues.filter((i) => !ignore.includes(gapKind(i, results, home))).length;
+}
 
 function GapsTab({ info, results }: { info: AppInfo; results: R }) {
-  const [open, setOpen] = useState<IssueKind | null>(null);
-  const groups = ISSUE_ORDER.map((kind) => ({ kind, items: results.issues.filter((i) => i.kind === kind) })).filter((g) => g.items.length);
+  const [open, setOpen] = useState<GapKind | null>(null);
+  const kindOf = (i: R["issues"][number]) => gapKind(i, results, info.home);
+  const groups = GAP_ORDER.map((kind) => ({ kind, items: results.issues.filter((i) => kindOf(i) === kind) })).filter((g) => g.items.length);
+  const label = (k: GapKind) => (k === "system_locked" ? SYSTEM_LOCKED.label : issueLabel[k]);
+  const advice = (k: GapKind) => (k === "system_locked" ? SYSTEM_LOCKED.advice : issueAdvice[k]);
   return (
     <>
       <p className="muted">
         The search can only vouch for places it could actually look. These are the places it couldn't fully check, and
         why.
       </p>
-      {info.os === "macos" && info.full_disk_access === false && results.issues.some((i) => i.kind === "permission_denied") && (
+      {info.os === "macos" && info.full_disk_access === false && results.issues.some((i) => kindOf(i) === "permission_denied") && (
         <div className="card note">
           <strong>Turn on Full Disk Access to open the locked folders.</strong>
           <div className="row">
@@ -376,9 +408,9 @@ function GapsTab({ info, results }: { info: AppInfo; results: R }) {
             <button className="row-button" onClick={() => setOpen(open === g.kind ? null : g.kind)}>
               <span className="row-main">
                 <span className="row-title">
-                  {issueLabel[g.kind]} <span className="muted">· {g.items.length.toLocaleString()}</span>
+                  {label(g.kind)} <span className="muted">· {g.items.length.toLocaleString()}</span>
                 </span>
-                <span className="row-reason">{issueAdvice[g.kind]}</span>
+                <span className="row-reason">{advice(g.kind)}</span>
               </span>
               <span className="chevron">{open === g.kind ? "−" : "+"}</span>
             </button>
