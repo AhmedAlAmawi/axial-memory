@@ -27,7 +27,15 @@ pub enum Value {
     Bytes(Vec<u8>),
     Version(i32, i32, i32),
     Date(i64),
-    /// A value type this reader keeps no payload for (points, colours, rectangles…).
+    /// A rectangle on the canvas: x, y, width, height.
+    Rect([f32; 4]),
+    /// A point on the canvas: x, y.
+    Point([f32; 2]),
+    /// A colour, as .NET packs it: alpha, red, green, blue from the high byte down.
+    Color(u32),
+    /// An image, such as the canvas preview Grasshopper saves in every file.
+    Bitmap(Vec<u8>),
+    /// A value type this reader keeps no payload for (3D points, planes, intervals…).
     Other(i32),
 }
 
@@ -45,6 +53,11 @@ pub mod types {
     pub const STRING: i32 = 10;
     pub const BYTE_ARRAY: i32 = 20;
     pub const DOUBLE_ARRAY: i32 = 21;
+    pub const POINT: i32 = 30;
+    pub const POINTF: i32 = 31;
+    pub const RECT: i32 = 34;
+    pub const RECTF: i32 = 35;
+    pub const COLOR: i32 = 36;
     pub const BITMAP: i32 = 37;
     pub const VERSION: i32 = 80;
 
@@ -105,6 +118,27 @@ impl Chunk {
             Value::Bool(b) => Some(*b),
             _ => None,
         }
+    }
+
+    pub fn rect(&self, name: &str) -> Option<[f32; 4]> {
+        match &self.item(name)?.value {
+            Value::Rect(r) => Some(*r),
+            _ => None,
+        }
+    }
+
+    pub fn color(&self, name: &str) -> Option<u32> {
+        match &self.item(name)?.value {
+            Value::Color(c) => Some(*c),
+            _ => None,
+        }
+    }
+
+    /// Where this object or parameter sits on the canvas, from its `Attributes`.
+    pub fn canvas_bounds(&self) -> Option<[f32; 4]> {
+        self.chunk("Attributes")?
+            .rect("Bounds")
+            .filter(|r| r.iter().all(|v| v.is_finite()) && r[2] >= 0.0 && r[3] >= 0.0)
     }
 
     pub fn chunk(&self, name: &str) -> Option<&Chunk> {

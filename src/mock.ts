@@ -4,8 +4,10 @@ import type {
   AiStatus,
   AppInfo,
   Candidate,
+  DefinitionMap,
   Explanation,
   FileView,
+  MapNode,
   Progress,
   Results,
   Root,
@@ -202,6 +204,70 @@ Kangaroo Components 2.42.
 The frond geometry comes from Rhino and isn't in the extract.`,
 });
 
+const node = (
+  id: number,
+  kind: string,
+  label: string,
+  role: MapNode["role"],
+  [x, y, w, h]: number[],
+  inputs: [string, number][],
+  outputs: [string, number][],
+  extra: Partial<MapNode> = {},
+): MapNode => ({
+  id,
+  kind,
+  label,
+  detail: null,
+  role,
+  plugin: null,
+  x,
+  y,
+  w,
+  h,
+  inputs: inputs.map(([name, py]) => ({ name, y: py })),
+  outputs: outputs.map(([name, py]) => ({ name, y: py })),
+  matched: false,
+  ...extra,
+});
+
+const palmMap: DefinitionMap = {
+  nodes: [
+    node(0, "Number Slider", "Count", "slider", [0, 40, 150, 20], [], [["", 50]], { detail: "144 (range 0 to 500)" }),
+    node(1, "Series", "Ser", "component", [200, 20, 60, 64], [["S", 32], ["N", 52], ["C", 72]], [["S", 52]]),
+    node(2, "Multiplication", "golden angle", "component", [300, 30, 70, 44], [["A", 42], ["B", 62]], [["R", 52]], { matched: true }),
+    node(3, "Panel", "Panel", "panel", [180, 110, 170, 46], [], [["", 133]], { detail: "angle = 137.5° between each frond base", matched: true }),
+    node(4, "Construct Point", "Pt", "component", [420, 30, 70, 64], [["X", 42], ["Y", 62], ["Z", 82]], [["Pt", 62]]),
+    node(5, "Interpolate", "Crv", "component", [560, 40, 70, 64], [["V", 52], ["D", 72], ["P", 92]], [["C", 72]]),
+    node(6, "Graph Mapper", "taper", "component", [540, 140, 110, 90], [["", 185]], [["", 185]]),
+    node(7, "Pipe", "Stalk", "component", [700, 60, 70, 64], [["C", 72], ["R", 92], ["E", 112]], [["P", 92]], { matched: true }),
+    node(8, "GhPython Script", "frond_shape", "script", [840, 160, 110, 64], [["n", 182], ["len", 202]], [["a", 192]], { matched: true }),
+    node(9, "Orient", "Frond", "component", [1000, 60, 80, 84], [["G", 80], ["A", 100], ["B", 120]], [["G", 100]], { matched: true }),
+    node(10, "Number Slider", "Fronds", "slider", [820, 260, 150, 20], [], [["", 270]], { detail: "48 (range 1 to 120)" }),
+  ],
+  wires: [
+    [0, 1, 150, 50, 200, 72],
+    [1, 2, 260, 52, 300, 42],
+    [3, 2, 350, 133, 300, 62],
+    [2, 4, 370, 52, 420, 42],
+    [1, 4, 260, 52, 420, 62],
+    [4, 5, 490, 62, 560, 52],
+    [5, 7, 630, 72, 700, 72],
+    [6, 7, 650, 185, 700, 92],
+    [7, 9, 770, 92, 1000, 80],
+    [10, 8, 970, 270, 840, 202],
+    [8, 9, 950, 192, 1000, 120],
+    [4, 9, 490, 62, 1000, 100],
+  ].map(([from, to, x1, y1, x2, y2]) => ({ from, to, x1, y1, x2, y2 })),
+  groups: [
+    { name: "Phyllotaxis spiral", colour: [170, 135, 255, 150], x: -8, y: -4, w: 506, h: 168, members: [0, 1, 2, 3, 4], depth: 0 },
+    { name: "Stalk taper", colour: [110, 190, 140, 150], x: 532, y: 16, w: 246, h: 222, members: [5, 6, 7], depth: 0 },
+    { name: "Frond array", colour: [240, 170, 90, 150], x: 812, y: 36, w: 276, h: 252, members: [8, 9, 10], depth: 0 },
+  ],
+  bounds: [-38, -34, 1156, 352],
+  thumbnail: null,
+  hidden: 2,
+};
+
 export async function call<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
   await new Promise((r) => setTimeout(r, 120));
   const a = (args ?? {}) as Record<string, any>;
@@ -251,6 +317,11 @@ export async function call<T>(cmd: string, args?: Record<string, unknown>): Prom
         return ai;
       case "ai_preview":
         return 'File: palm_stalk_v4.gh\nSaved by Grasshopper 1.0.7\nPlugins: Kangaroo Components 2.42\n\nGroups (component numbers inside):\n- "Phyllotaxis spiral": 2, 3, 4\n\nComponents in dataflow order (37 total).\n1. Number Slider "Count" = 144 (range 0 to 500)\n2. Series "Ser" <- 1\n3. Multiplication "golden angle" <- 2\n…';
+      case "definition_map": {
+        // `?map=/file.json` previews a real definition's map (from `axial-scan --map`).
+        const url = new URLSearchParams(location.search).get("map");
+        return url ? fetch(url).then((r) => r.json()) : palmMap;
+      }
       case "get_explanation":
         return a.sha256 === "a1" ? explanation("a1") : null;
       case "explain_file":

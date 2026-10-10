@@ -77,12 +77,36 @@ fn item_from(node: Node) -> Item {
             let part = |n: &str| child_text(node, n).and_then(|t| t.trim().parse().ok()).unwrap_or(0);
             Value::Version(part("Major"), part("Minor"), part("Revision"))
         }
-        types::BYTE_ARRAY => {
+        types::BYTE_ARRAY | types::BITMAP => {
             let compact: String = text().chars().filter(|c| !c.is_whitespace()).collect();
-            base64::engine::general_purpose::STANDARD
-                .decode(compact.as_bytes())
-                .map(Value::Bytes)
-                .unwrap_or(Value::Other(code))
+            match base64::engine::general_purpose::STANDARD.decode(compact.as_bytes()) {
+                Ok(b) if code == types::BITMAP => Value::Bitmap(b),
+                Ok(b) => Value::Bytes(b),
+                Err(_) => Value::Other(code),
+            }
+        }
+        types::POINT | types::POINTF => {
+            let part = |n: &str| child_text(node, n).and_then(|t| t.trim().parse::<f32>().ok());
+            match (part("X"), part("Y")) {
+                (Some(x), Some(y)) => Value::Point([x, y]),
+                _ => Value::Other(code),
+            }
+        }
+        types::RECT | types::RECTF => {
+            let part = |n: &str| child_text(node, n).and_then(|t| t.trim().parse::<f32>().ok());
+            match (part("X"), part("Y"), part("W"), part("H")) {
+                (Some(x), Some(y), Some(w), Some(h)) => Value::Rect([x, y, w, h]),
+                _ => Value::Other(code),
+            }
+        }
+        types::COLOR => {
+            let argb: Vec<u32> = child_text(node, "ARGB")
+                .map(|t| t.split(';').filter_map(|p| p.trim().parse().ok()).collect())
+                .unwrap_or_default();
+            match argb[..] {
+                [a, r, g, b] => Value::Color((a & 0xff) << 24 | (r & 0xff) << 16 | (g & 0xff) << 8 | (b & 0xff)),
+                _ => Value::Other(code),
+            }
         }
         other => Value::Other(other),
     };

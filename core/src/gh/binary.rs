@@ -228,9 +228,15 @@ impl<'a> Reader<'a> {
             }
             types::BITMAP => {
                 let n = self.count(1)?;
-                self.take(n)?;
-                Value::Other(code)
+                Value::Bitmap(self.take(n)?.to_vec())
             }
+            types::POINT => Value::Point([self.i32()? as f32, self.i32()? as f32]),
+            types::POINTF => Value::Point([self.f32()?, self.f32()?]),
+            types::RECT => {
+                Value::Rect([self.i32()? as f32, self.i32()? as f32, self.i32()? as f32, self.i32()? as f32])
+            }
+            types::RECTF => Value::Rect([self.f32()?, self.f32()?, self.f32()?, self.f32()?]),
+            types::COLOR => Value::Color(self.i32()? as u32),
             types::DOUBLE_ARRAY => {
                 let n = self.count(8)?;
                 self.take(n * 8)?;

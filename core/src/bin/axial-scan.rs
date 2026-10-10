@@ -1,9 +1,12 @@
 //! Headless scan, for development and as a fallback when the app can't run.
 //!
 //!   axial-scan [--out DIR] [--label NAME] [--add SCANFILE]... [PATH]...
+//!   axial-scan --map FILE.gh > map.json
 //!
 //! With no PATH it searches the whole computer like the app does. It writes a
 //! `.axialscan` file and a report folder into DIR (default: current folder).
+//! `--map` prints one definition's map, for previewing with `pnpm ui` at
+//! `/?map=/map.json` (put the file in the repo root).
 
 use axial_core::model::{Machine, ScanOptions};
 use axial_core::roots::{self, Root};
@@ -24,6 +27,7 @@ fn main() -> anyhow::Result<()> {
             "--out" => out = PathBuf::from(args.next().expect("--out needs a folder")),
             "--label" => label = args.next(),
             "--add" => extra_scans.push(PathBuf::from(args.next().expect("--add needs a scan file"))),
+            "--map" => return print_map(&PathBuf::from(args.next().expect("--map needs a Grasshopper file"))),
             "-h" | "--help" => {
                 println!("axial-scan [--out DIR] [--label NAME] [--add SCANFILE]... [PATH]...");
                 return Ok(());
@@ -81,5 +85,14 @@ fn main() -> anyhow::Result<()> {
         println!("  #{} [{}] {} — {}", c.rank, c.confidence.as_str(), c.name, c.reason);
     }
     println!("scan file: {}\nreport:    {}", scan_path.display(), report.display());
+    Ok(())
+}
+
+fn print_map(path: &std::path::Path) -> anyhow::Result<()> {
+    let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("gh").to_lowercase();
+    let digest = axial_core::gh::read_digest(&std::fs::read(path)?, &ext).map_err(anyhow::Error::msg)?;
+    let matcher = terms::Matcher::new(&terms::default_terms());
+    let map = axial_core::map::build(&digest, &axial_core::map::matched_objects(&digest, &matcher));
+    println!("{}", serde_json::to_string(&map)?);
     Ok(())
 }

@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { api } from "../api";
+import { DefinitionMapView } from "../components/DefinitionMap";
 import { Chip, Drawer, Markdown, Modal } from "../components/ui";
-import { bytes, kindLabel, revealLabel, shortPath, sourceLabel, statusLabel, tagLabel, when } from "../format";
-import type { AiStatus, AppInfo, Explanation, Results } from "../types";
+import { bytes, count, kindLabel, revealLabel, shortPath, sourceLabel, statusLabel, tagLabel, when } from "../format";
+import type { AiStatus, AppInfo, DefinitionMap, Explanation, Results } from "../types";
 
 export function FileDetail({
   info,
@@ -28,13 +29,20 @@ export function FileDetail({
   const [preview, setPreview] = useState<string | null>(null);
   const [asking, setAsking] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
+  const [map, setMap] = useState<DefinitionMap | null>(null);
+  const [large, setLarge] = useState(false);
 
   useEffect(() => {
     setExplanation(null);
     setAiError(null);
     setPreview(null);
+    setMap(null);
+    setLarge(false);
     if (f?.sha256) api.getExplanation(f.sha256).then(setExplanation);
-  }, [f?.sha256]);
+    if (f && f.read === "parsed" && f.kind.match(/definition|user_object/)) {
+      api.definitionMap(f.id).then(setMap).catch(() => setMap(null));
+    }
+  }, [f?.id, f?.sha256]);
 
   if (!f) return null;
   const readable = f.read === "parsed" && f.kind !== "script";
@@ -101,6 +109,27 @@ export function FileDetail({
             {c.evidence_total > c.evidence.length && (
               <p className="muted small">…and {c.evidence_total - c.evidence.length} more in the report.</p>
             )}
+          </section>
+        )}
+
+        {map && (
+          <section>
+            <h3>Map</h3>
+            <DefinitionMapView map={map} height={300} onExpand={() => setLarge(true)} />
+            <div className="map-caption">
+              <p className="muted small">
+                Drawn from the file: components where they sit on the canvas, the wires between them and your groups.
+                {map.nodes.some((n) => n.matched) && " Outlined in green: components with a search word."}
+                {map.hidden > 0 && ` ${count(map.hidden, "component")} inside clusters aren't shown.`} Drag to move, scroll to
+                zoom.
+              </p>
+              {map.thumbnail && (
+                <figure className="thumb">
+                  <img src={`data:image/png;base64,${map.thumbnail}`} alt="Grasshopper's own preview of the canvas" />
+                  <figcaption className="muted small">Grasshopper's own preview</figcaption>
+                </figure>
+              )}
+            </div>
           </section>
         )}
 
@@ -195,6 +224,12 @@ export function FileDetail({
           </section>
         )}
       </div>
+
+      {large && map && (
+        <Modal title={f.name} onClose={() => setLarge(false)} wide>
+          <DefinitionMapView map={map} height="calc(90vh - 140px)" />
+        </Modal>
+      )}
 
       {preview !== null && (
         <Modal title={`Send this to ${ai.provider_label}?`} onClose={() => setPreview(null)}>

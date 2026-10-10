@@ -139,7 +139,7 @@ impl Source {
             Source::Group => "group label",
             Source::Panel => "panel text",
             Source::Note => "scribble note",
-            Source::Nickname => "component she renamed",
+            Source::Nickname => "renamed component",
             Source::Script => "script code",
             Source::Value => "typed value",
             Source::Component => "component type",

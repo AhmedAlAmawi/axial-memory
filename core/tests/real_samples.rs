@@ -31,6 +31,17 @@ fn real_files_read_cleanly() {
             d.texts.len(),
             s.nested_archives
         );
+        match axial_core::map::build(&d, &Default::default()) {
+            Some(m) => eprintln!(
+                "    map: {} nodes, {} wires, {} groups, {} hidden, preview {}",
+                m.nodes.len(),
+                m.wires.len(),
+                m.groups.len(),
+                m.hidden,
+                if m.thumbnail.is_some() { "yes" } else { "no" }
+            ),
+            None => eprintln!("    map: nothing positioned"),
+        }
         read += 1;
     }
     assert!(read > 0, "no Grasshopper files in {dir}");

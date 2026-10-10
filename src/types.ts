@@ -265,6 +265,58 @@ export interface AppInfo {
   home: string | null;
 }
 
+export type MapRole = "component" | "param" | "slider" | "panel" | "note" | "script" | "cluster";
+
+export interface MapPin {
+  name: string;
+  y: number;
+}
+
+export interface MapNode {
+  id: number;
+  kind: string;
+  label: string;
+  detail: string | null;
+  role: MapRole;
+  plugin: string | null;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  inputs: MapPin[];
+  outputs: MapPin[];
+  matched: boolean;
+}
+
+export interface MapGroup {
+  name: string;
+  colour: [number, number, number, number];
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  members: number[];
+  depth: number;
+}
+
+export interface MapWire {
+  from: number;
+  to: number;
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+}
+
+export interface DefinitionMap {
+  nodes: MapNode[];
+  groups: MapGroup[];
+  wires: MapWire[];
+  bounds: [number, number, number, number];
+  thumbnail: string | null;
+  hidden: number;
+}
+
 export interface Imported {
   label: string;
   os: string;

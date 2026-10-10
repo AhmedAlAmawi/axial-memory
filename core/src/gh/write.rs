@@ -103,6 +103,27 @@ fn write_item(out: &mut Vec<u8>, item: &Item) {
             out.extend_from_slice(&types::DATE.to_le_bytes());
             out.extend_from_slice(&t.to_le_bytes());
         }
+        Value::Rect(r) => {
+            out.extend_from_slice(&types::RECTF.to_le_bytes());
+            for v in r {
+                out.extend_from_slice(&v.to_le_bytes());
+            }
+        }
+        Value::Point(p) => {
+            out.extend_from_slice(&types::POINTF.to_le_bytes());
+            for v in p {
+                out.extend_from_slice(&v.to_le_bytes());
+            }
+        }
+        Value::Color(c) => {
+            out.extend_from_slice(&types::COLOR.to_le_bytes());
+            out.extend_from_slice(&c.to_le_bytes());
+        }
+        Value::Bitmap(b) => {
+            out.extend_from_slice(&types::BITMAP.to_le_bytes());
+            out.extend_from_slice(&(b.len() as i32).to_le_bytes());
+            out.extend_from_slice(b);
+        }
         Value::Other(code) => {
             out.extend_from_slice(&code.to_le_bytes());
             out.extend(std::iter::repeat_n(0u8, types::fixed_size(*code).unwrap_or(0)));
@@ -137,6 +158,24 @@ fn write_body(s: &mut String, c: &Chunk, depth: usize) {
                 ("gh_version", types::VERSION, format!("<Major>{a}</Major><Minor>{b}</Minor><Revision>{c}</Revision>"))
             }
             Value::Date(t) => ("gh_date", types::DATE, t.to_string()),
+            Value::Rect([x, y, w, h]) => {
+                ("gh_drawing_rectanglef", types::RECTF, format!("<X>{x}</X><Y>{y}</Y><W>{w}</W><H>{h}</H>"))
+            }
+            Value::Point([x, y]) => ("gh_drawing_pointf", types::POINTF, format!("<X>{x}</X><Y>{y}</Y>")),
+            Value::Color(c) => (
+                "gh_drawing_color",
+                types::COLOR,
+                format!("<ARGB>{};{};{};{}</ARGB>", c >> 24, (c >> 16) & 0xff, (c >> 8) & 0xff, c & 0xff),
+            ),
+            Value::Bitmap(b) => (
+                "gh_drawing_bitmap",
+                types::BITMAP,
+                format!(
+                    "<bitmap length=\"{}\">{}</bitmap>",
+                    b.len(),
+                    base64::engine::general_purpose::STANDARD.encode(b)
+                ),
+            ),
             Value::Other(code) => ("gh_unknown", *code, String::new()),
         };
         s.push_str(&format!(
@@ -200,6 +239,18 @@ pub mod build {
             self
         }
 
+        /// Objects are laid out left to right, one per column.
+        fn slot(&self) -> (f32, f32) {
+            (180.0 * self.objects.len() as f32, 100.0)
+        }
+
+        fn attributes(x: f32, y: f32, w: f32, h: f32) -> Chunk {
+            let mut a = Chunk::new("Attributes");
+            a.items.push(item("Bounds", Value::Rect([x, y, w, h])));
+            a.items.push(item("Pivot", Value::Point([x, y])));
+            a
+        }
+
         fn container(id: u32, nick: &str) -> Chunk {
             let mut c = Chunk::new("Container");
             c.items.push(item("InstanceGuid", g(&guid(id))));
@@ -209,7 +260,9 @@ pub mod build {
 
         /// A component with one input (wired from `sources`) and one output (`id + 1`).
         pub fn component(&mut self, type_name: &str, id: u32, nick: &str, sources: &[u32]) -> &mut Self {
+            let (x, y) = self.slot();
             let mut c = Self::container(id, nick);
+            c.chunks.push(Self::attributes(x, y, 100.0, 40.0));
             let mut input = Chunk::new("param_input");
             input.index = Some(0);
             input.items.push(item("InstanceGuid", g(&guid(id + 1000))));
@@ -217,19 +270,23 @@ pub mod build {
             for (i, src) in sources.iter().enumerate() {
                 input.items.push(indexed("Source", i as i32, g(&guid(src + 1))));
             }
+            input.chunks.push(Self::attributes(x, y + 10.0, 20.0, 20.0));
             let mut output = Chunk::new("param_output");
             output.index = Some(0);
             output.items.push(item("InstanceGuid", g(&guid(id + 1))));
             output.items.push(item("NickName", s("R")));
+            output.chunks.push(Self::attributes(x + 80.0, y + 10.0, 20.0, 20.0));
             c.chunks.push(input);
             c.chunks.push(output);
             self.object(type_name, c)
         }
 
         pub fn slider(&mut self, id: u32, nick: &str, value: f64) -> &mut Self {
+            let (x, y) = self.slot();
             let mut c = Self::container(id, nick);
             // Floating parameters expose their own guid as the output.
             c.items[0] = item("InstanceGuid", g(&guid(id + 1)));
+            c.chunks.push(Self::attributes(x, y, 140.0, 20.0));
             let mut slider = Chunk::new("Slider");
             slider.items.push(item("Min", Value::Float(0.0)));
             slider.items.push(item("Max", Value::Float(500.0)));
@@ -239,13 +296,17 @@ pub mod build {
         }
 
         pub fn panel(&mut self, id: u32, text: &str) -> &mut Self {
+            let (x, y) = self.slot();
             let mut c = Self::container(id, "Panel");
             c.items.push(item("UserText", s(text)));
+            c.chunks.push(Self::attributes(x, y, 160.0, 60.0));
             self.object("Panel", c)
         }
 
+        /// Groups have no position of their own: they wrap their members.
         pub fn group(&mut self, id: u32, label: &str, members: &[u32]) -> &mut Self {
             let mut c = Self::container(id, label);
+            c.items.push(item("Colour", Value::Color(0x96aa_87ff)));
             for (i, m) in members.iter().enumerate() {
                 c.items.push(indexed("ID", i as i32, g(&guid(*m))));
             }
@@ -253,9 +314,18 @@ pub mod build {
         }
 
         pub fn python(&mut self, id: u32, nick: &str, code: &str) -> &mut Self {
+            let (x, y) = self.slot();
             let mut c = Self::container(id, nick);
             c.items.push(item("CodeInput", s(code)));
+            c.chunks.push(Self::attributes(x, y, 100.0, 40.0));
             self.object("GhPython Script", c)
+        }
+
+        /// The canvas preview Grasshopper stores beside the definition.
+        pub fn thumbnail(root: &mut Chunk, png: &[u8]) {
+            let mut t = Chunk::new("Thumbnail");
+            t.items.push(item("Thumbnail", Value::Bitmap(png.to_vec())));
+            root.chunks.push(t);
         }
 
         pub fn library(&mut self, name: &str, version: &str) -> &mut Self {

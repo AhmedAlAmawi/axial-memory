@@ -76,11 +76,18 @@ export function Drawer({ open, onClose, children }: { open: boolean; onClose: ()
   );
 }
 
-export function Modal({ title, children, onClose }: { title: string; children: ReactNode; onClose: () => void }) {
+export function Modal({ title, children, onClose, wide = false }: { title: string; children: ReactNode; onClose: () => void; wide?: boolean }) {
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal" role="dialog" aria-label={title} onClick={(e) => e.stopPropagation()}>
-        <h3>{title}</h3>
+      <div className={wide ? "modal wide" : "modal"} role="dialog" aria-label={title} onClick={(e) => e.stopPropagation()}>
+        <div className="modal-head">
+          <h3>{title}</h3>
+          {wide && (
+            <button className="secondary small" onClick={onClose}>
+              Close
+            </button>
+          )}
+        </div>
         {children}
       </div>
     </div>

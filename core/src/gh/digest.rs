@@ -28,11 +28,27 @@ pub struct Digest {
     pub objects: Vec<Obj>,
     pub groups: Vec<Group>,
     pub edges: Vec<(u32, u32)>,
+    /// The same connections, port by port, for drawing the canvas.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub wires: Vec<Wire>,
     pub texts: Vec<Text>,
     pub scripts: Vec<Script>,
     pub references: Vec<String>,
     pub nested_archives: u32,
     pub truncated: bool,
+    /// The small canvas preview Grasshopper saves in the file, as base64 PNG.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub thumbnail: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct Wire {
+    pub from: u32,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub from_pin: Option<u16>,
+    pub to: u32,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub to_pin: Option<u16>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -57,12 +73,26 @@ pub struct Obj {
     pub outputs: Vec<String>,
     #[serde(default, skip_serializing_if = "is_false")]
     pub in_cluster: bool,
+    /// Where it sits on the canvas: x, y, width, height.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub bounds: Option<[f32; 4]>,
+    /// Canvas rectangles of the input and output ports, in the same order as `inputs`/`outputs`.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub in_pins: Vec<Option<[f32; 4]>>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub out_pins: Vec<Option<[f32; 4]>>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct Group {
     pub name: String,
     pub members: Vec<u32>,
+    /// The colour she gave it, as .NET ARGB.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub colour: Option<u32>,
+    /// The group's own object, so groups inside groups can be found.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub obj: Option<u32>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -89,7 +119,7 @@ impl TextSource {
             TextSource::Group => "group label",
             TextSource::Panel => "panel text",
             TextSource::Note => "scribble note",
-            TextSource::Nickname => "component name she gave",
+            TextSource::Nickname => "renamed component",
             TextSource::Script => "script code",
             TextSource::Value => "value typed into a parameter",
             TextSource::Component => "component type",
@@ -166,16 +196,27 @@ pub fn plugin_label(p: &Plugin) -> String {
 #[derive(Default)]
 struct Ctx {
     guid_to_obj: HashMap<String, u32>,
-    pending_edges: Vec<(String, u32)>,
+    /// Output ports: guid to (object, port index).
+    guid_to_pin: HashMap<String, (u32, u16)>,
+    /// Wires waiting for their source to be known: (source guid, target, target port).
+    pending_wires: Vec<(String, u32, Option<u16>)>,
     pending_groups: Vec<(usize, Vec<String>)>,
     libs: HashMap<String, u32>,
     seen_texts: HashSet<(TextSource, String, Option<u32>)>,
 }
 
+const MAX_THUMBNAIL_BYTES: usize = 256 * 1024;
+
 pub fn build(root: &Chunk, format: &str) -> Digest {
     let mut d = Digest { format: format.to_string(), ..Digest::default() };
     let mut ctx = Ctx::default();
     d.archive_version = root.item("ArchiveVersion").and_then(|i| version_text(&i.value));
+    d.thumbnail = root.chunk("Thumbnail").and_then(|t| t.item("Thumbnail")).and_then(|i| match &i.value {
+        Value::Bitmap(png) if !png.is_empty() && png.len() <= MAX_THUMBNAIL_BYTES => {
+            Some(base64::engine::general_purpose::STANDARD.encode(png))
+        }
+        _ => None,
+    });
     build_any(root, &mut d, &mut ctx, 0, false);
     resolve(&mut d, &mut ctx);
     d.references = find_references(&d);
@@ -289,7 +330,7 @@ const IGNORED_ITEMS: &[&str] = &[
     "font",
 ];
 
-fn is_script_kind(kind: &str) -> bool {
+pub(crate) fn is_script_kind(kind: &str) -> bool {
     let k = kind.to_ascii_lowercase();
     ["python", "c#", "csharp", "vb ", "vb.net", "script", "ironpython", "code"].iter().any(|w| k.contains(w))
 }
@@ -307,6 +348,9 @@ fn component(kind: &str, lib: Option<&str>, c: &Chunk, d: &mut Digest, ctx: &mut
         inputs: Vec::new(),
         outputs: Vec::new(),
         in_cluster,
+        bounds: c.canvas_bounds(),
+        in_pins: Vec::new(),
+        out_pins: Vec::new(),
     };
     let kind_lc = kind.to_ascii_lowercase();
     let scripty = is_script_kind(&kind) || c.item("CodeInput").is_some() || c.item("ScriptSource").is_some();
@@ -328,9 +372,10 @@ fn component(kind: &str, lib: Option<&str>, c: &Chunk, d: &mut Digest, ctx: &mut
     o.nick = nick.clone();
 
     // Wires: every input parameter lists the guids of the outputs feeding it.
+    // A floating parameter (slider, panel…) is its own input and output.
     for src in c.items_named("Source") {
         if let Value::Guid(g) = &src.value {
-            ctx.pending_edges.push((g.clone(), idx));
+            ctx.pending_wires.push((g.clone(), idx, None));
         }
     }
     let mut ports: Vec<(&Chunk, bool)> = Vec::new();
@@ -346,26 +391,28 @@ fn component(kind: &str, lib: Option<&str>, c: &Chunk, d: &mut Digest, ctx: &mut
         }
     });
     for (p, is_input) in ports {
+        let label = p.str("NickName").or(p.str("Name")).unwrap_or("").trim().to_string();
+        let pin = if is_input { o.inputs.len() } else { o.outputs.len() } as u16;
         if let Some(g) = p.guid("InstanceGuid") {
             ctx.guid_to_obj.insert(g.to_string(), idx);
+            if !is_input {
+                ctx.guid_to_pin.insert(g.to_string(), (idx, pin));
+            }
         }
-        let label = p.str("NickName").or(p.str("Name")).unwrap_or("").trim().to_string();
-        if !label.is_empty() {
-            if is_input {
-                o.inputs.push(label.clone())
-            } else {
-                o.outputs.push(label.clone())
-            }
-            if scripty && label.chars().count() > 1 {
-                push_text(d, ctx, TextSource::Port, &label, Some(idx), in_cluster);
-            }
+        if scripty && label.chars().count() > 1 {
+            push_text(d, ctx, TextSource::Port, &label, Some(idx), in_cluster);
         }
         if is_input {
             for src in p.items_named("Source") {
                 if let Value::Guid(g) = &src.value {
-                    ctx.pending_edges.push((g.clone(), idx));
+                    ctx.pending_wires.push((g.clone(), idx, Some(pin)));
                 }
             }
+            o.inputs.push(label);
+            o.in_pins.push(p.canvas_bounds());
+        } else {
+            o.outputs.push(label);
+            o.out_pins.push(p.canvas_bounds());
         }
     }
 
@@ -378,7 +425,12 @@ fn component(kind: &str, lib: Option<&str>, c: &Chunk, d: &mut Digest, ctx: &mut
                     _ => None,
                 })
                 .collect();
-            d.groups.push(Group { name: nick.clone().unwrap_or_default(), members: Vec::new() });
+            d.groups.push(Group {
+                name: nick.clone().unwrap_or_default(),
+                members: Vec::new(),
+                colour: c.color("Colour"),
+                obj: Some(idx),
+            });
             ctx.pending_groups.push((d.groups.len() - 1, members));
         }
         "panel" => {
@@ -491,11 +543,18 @@ fn harvest_generic(root: &Chunk, d: &mut Digest, ctx: &mut Ctx, in_cluster: bool
 
 fn resolve(d: &mut Digest, ctx: &mut Ctx) {
     let mut seen = HashSet::new();
-    for (src, dst) in std::mem::take(&mut ctx.pending_edges) {
-        if let Some(&from) = ctx.guid_to_obj.get(&src) {
-            if from != dst && seen.insert((from, dst)) {
-                d.edges.push((from, dst));
-            }
+    for (src, to, to_pin) in std::mem::take(&mut ctx.pending_wires) {
+        let from = match ctx.guid_to_pin.get(&src) {
+            Some(&(obj, pin)) => Some((obj, Some(pin))),
+            None => ctx.guid_to_obj.get(&src).map(|&obj| (obj, None)),
+        };
+        let Some((from, from_pin)) = from else { continue };
+        if from == to {
+            continue;
+        }
+        d.wires.push(Wire { from, from_pin, to, to_pin });
+        if seen.insert((from, to)) {
+            d.edges.push((from, to));
         }
     }
     for (gi, members) in std::mem::take(&mut ctx.pending_groups) {

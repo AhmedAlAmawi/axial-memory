@@ -1009,6 +1009,235 @@ main {
   box-shadow: var(--shadow);
 }
 
+.modal.wide {
+  width: 94vw;
+  height: 90vh;
+  overflow: hidden;
+}
+
+.modal-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.modal-head h3 {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Definition map */
+
+.map {
+  position: relative;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--paper);
+}
+
+.map-canvas {
+  display: block;
+  width: 100%;
+  cursor: grab;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  background-image: radial-gradient(var(--line) 1px, transparent 1px);
+  background-size: 18px 18px;
+}
+
+.map-canvas:active {
+  cursor: grabbing;
+}
+
+.map-tools {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  gap: 4px;
+  z-index: 1;
+}
+
+.map-tools button {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 2px 9px;
+  font-size: 12.5px;
+}
+
+.map .wire {
+  fill: none;
+  stroke: var(--muted);
+  stroke-opacity: 0.55;
+  stroke-width: 1.4;
+}
+
+.map .wire.lit {
+  stroke: var(--accent);
+  stroke-opacity: 1;
+  stroke-width: 2.4;
+}
+
+.map .wire.dim {
+  stroke-opacity: 0.12;
+}
+
+.map .node rect {
+  fill: var(--surface);
+  stroke: var(--ink);
+  stroke-opacity: 0.5;
+  stroke-width: 1;
+}
+
+.map .node.param rect,
+.map .node.slider rect {
+  fill: var(--paper);
+}
+
+.map .node.panel rect {
+  fill: #fbf1c8;
+  stroke: #c9b46a;
+  stroke-opacity: 1;
+}
+
+.map .node.script rect {
+  stroke: var(--gold);
+  stroke-opacity: 1;
+  stroke-width: 1.5;
+}
+
+.map .node.cluster rect {
+  stroke-dasharray: 4 2;
+}
+
+.map .node.note rect {
+  fill: none;
+  stroke: none;
+}
+
+.map .node.matched rect {
+  stroke: var(--accent);
+  stroke-width: 2.8;
+  stroke-opacity: 1;
+}
+
+.map .node.dim {
+  opacity: 0.3;
+}
+
+.map .node-label {
+  font: 500 10px var(--sans);
+  fill: var(--ink);
+  text-anchor: middle;
+  dominant-baseline: central;
+  pointer-events: none;
+}
+
+.map .node-label.left {
+  text-anchor: start;
+}
+
+.map .pin {
+  fill: var(--surface);
+  stroke: var(--ink);
+  stroke-opacity: 0.6;
+  stroke-width: 1;
+}
+
+.map .pin-label {
+  font: 7px var(--sans);
+  fill: var(--muted);
+  dominant-baseline: central;
+  pointer-events: none;
+}
+
+.map .pin-label.end {
+  text-anchor: end;
+}
+
+.map .panel-text {
+  font: 8.5px var(--sans);
+  fill: #5a4a12;
+  pointer-events: none;
+}
+
+.map .node.note .panel-text {
+  fill: var(--ink);
+  font-style: italic;
+}
+
+.map-group-label {
+  font: 600 11px var(--sans);
+  fill: var(--ink);
+  pointer-events: none;
+}
+
+.map-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 10px;
+  border-top: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.map-legend button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--line);
+  background: none;
+  border-radius: 99px;
+  padding: 2px 10px;
+  font-size: 12px;
+}
+
+.swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex: none;
+}
+
+.map-caption {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  margin-top: 8px;
+}
+
+.map-caption p {
+  flex: 1;
+}
+
+.thumb {
+  margin: 0;
+  flex: none;
+  text-align: center;
+}
+
+.thumb img {
+  display: block;
+  width: 150px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .map .node.panel rect {
+    fill: #3a3420;
+    stroke: #6b5d2e;
+  }
+  .map .panel-text {
+    fill: #e9dca8;
+  }
+}
+
 .preview {
   font-family: var(--mono);
   font-size: 12px;

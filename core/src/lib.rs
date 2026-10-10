@@ -7,6 +7,7 @@ pub mod cloud;
 pub mod explain;
 pub mod export;
 pub mod gh;
+pub mod map;
 pub mod model;
 pub mod results;
 pub mod roots;

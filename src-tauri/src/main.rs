@@ -7,8 +7,8 @@ use axial_core::model::{Machine, ScanData, ScanMeta, ScanOptions, ScanStatus};
 use axial_core::results::Results;
 use axial_core::roots::{self, Root};
 use axial_core::scan::{self, Phase, Progress, ScanRequest};
-use axial_core::terms::default_terms;
-use axial_core::{explain, export, results, store};
+use axial_core::terms::{default_terms, Matcher};
+use axial_core::{explain, export, map, results, store};
 use serde::{Deserialize, Serialize};
 use settings::{Paths, Settings};
 use std::path::{Path, PathBuf};
@@ -515,6 +515,31 @@ async fn ai_preview(file_id: u32, app: AppHandle) -> Res<String> {
     .map_err(err)?
 }
 
+/// The canvas of one definition, drawn from the file, with search-word matches marked.
+#[tauri::command]
+async fn definition_map(file_id: u32, app: AppHandle) -> Res<Option<map::Map>> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<AppState>();
+        let Some(loaded) = state.load()? else { return Ok(None) };
+        let Some(sha) = loaded.results.files.get(file_id as usize).and_then(|f| f.sha256.clone()) else {
+            return Ok(None);
+        };
+        let Some(digest) = loaded
+            .scans
+            .iter()
+            .flat_map(|s| s.contents.iter())
+            .find(|c| c.sha256 == sha)
+            .and_then(|c| c.digest.as_ref())
+        else {
+            return Ok(None);
+        };
+        let matcher = Matcher::new(&state.settings().terms);
+        Ok(map::build(digest, &map::matched_objects(digest, &matcher)))
+    })
+    .await
+    .map_err(err)?
+}
+
 #[tauri::command]
 fn get_explanation(sha256: String, state: State<AppState>) -> Option<Explanation> {
     let path = state.paths.explanations().join(format!("{sha256}.json"));
@@ -592,6 +617,7 @@ fn main() {
             set_ai_key,
             clear_ai_key,
             ai_preview,
+            definition_map,
             get_explanation,
             explain_file,
         ])

@@ -64,8 +64,10 @@ viewport captures with fixed camera settings, a stage manifest tied to file
 hashes, and a publication kit.
 
 Already in place: the dependency graph, dataflow order, groups, plugin list
-and references for every parsed definition (`gh/digest.rs`), and the
-prioritized review set. Still needed: a Rhino 8 plugin (Mac and Windows) that
+and references for every parsed definition (`gh/digest.rs`); a map of each
+definition's canvas drawn from its saved layout, with port-to-port wires, the
+groups in their own colours and the palm matches marked (`map.rs`); the
+preview image Grasshopper saves; and the prioritized review set. Still needed: a Rhino 8 plugin (Mac and Windows) that
 opens a copy of a definition, solves it, isolates stages, and captures the
 canvas and viewport; then batch runs, Karamba3D-specific analysis, parameter
 sweeps and layouts. MVP per the brief: one known definition, three to six

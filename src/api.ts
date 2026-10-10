@@ -3,6 +3,7 @@ import { listen } from "@tauri-apps/api/event";
 import type {
   AiStatus,
   AppInfo,
+  DefinitionMap,
   Explanation,
   Imported,
   Progress,
@@ -43,6 +44,7 @@ export const api = {
   setAiKey: (key: string) => call<AiStatus>("set_ai_key", { key }),
   clearAiKey: () => call<AiStatus>("clear_ai_key"),
   aiPreview: (fileId: number) => call<string>("ai_preview", { fileId }),
+  definitionMap: (fileId: number) => call<DefinitionMap | null>("definition_map", { fileId }),
   getExplanation: (sha256: string) => call<Explanation | null>("get_explanation", { sha256 }),
   explainFile: (fileId: number) => call<Explanation>("explain_file", { fileId }),
 };

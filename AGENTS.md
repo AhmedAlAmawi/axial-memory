@@ -44,6 +44,7 @@ The repo is public. Keep the researcher's name and personal details out of it.
 | `core/src/store.rs` | The `.axialscan` file: one SQLite database per laptop scan. |
 | `core/src/export.rs` | The report folder: the spec's CSVs, merged SQLite, `REVIEW_SET.json`. |
 | `core/src/explain.rs` | The text extract and system prompt for AI explanations. |
+| `core/src/map.rs` | The map of one definition, drawn only from what the file saved: components at their canvas positions, wires port to port, groups in their own colours, search-word matches marked, plus Grasshopper's own preview image. Rendered by `src/components/DefinitionMap.tsx`. |
 | `src-tauri/` | The Tauri 2 app: commands, settings, AI calls, updater. |
 | `src/` | The React interface. `mock.ts` stands in for the backend in a plain browser. |
 | `docs/` | Spec status, install guides, releasing, and the download page (GitHub Pages). |
@@ -64,6 +65,7 @@ pnpm ui                  # the interface alone in a browser, on mock data (add ?
 cargo test -p axial-core # engine tests, including the spec's acceptance test
 AXIAL_SAMPLES_DIR=/path/to/gh/files cargo test -p axial-core --test real_samples -- --nocapture
 cargo run -p axial-core --release --bin axial-scan -- --out /tmp/out ~/Documents   # headless scan + report
+cargo run -p axial-core --bin axial-scan -- --map some.gh > map-some.json            # then pnpm ui, open /?map=/map-some.json
 make check               # everything CI runs
 make release VERSION=0.2.0
 ```
@@ -89,8 +91,8 @@ on. A paid Developer ID (or a stable self-signed identity) would fix both.
 
 ## Not built yet (see docs/SPEC.md)
 
-- Agent 02 (the interpreter): solving definitions in Rhino and capturing stage
-  screenshots needs a Rhino 8 plugin. The digest already has the dependency
-  graph and dataflow order it would start from; `REVIEW_SET.json` is its input.
+- Agent 02 (the interpreter): solving definitions in Rhino and capturing the
+  geometry stage by stage needs a Rhino 8 plugin. The canvas map, dependency
+  graph and dataflow order are already there; `REVIEW_SET.json` is its input.
 - Resumable scans, `.rar/.7z` contents, Time Machine backups, text inside `.3dm`.
 - A shared folder that merges the two laptops without moving a file by hand.
