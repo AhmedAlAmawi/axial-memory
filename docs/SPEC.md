@@ -67,8 +67,17 @@ Already in place: the dependency graph, dataflow order, groups, plugin list
 and references for every parsed definition (`gh/digest.rs`); a map of each
 definition's canvas drawn from its saved layout, with port-to-port wires, the
 groups in their own colours and the palm matches marked (`map.rs`); the
-preview image Grasshopper saves; and the prioritized review set. Still needed: a Rhino 8 plugin (Mac and Windows) that
-opens a copy of a definition, solves it, isolates stages, and captures the
-canvas and viewport; then batch runs, Karamba3D-specific analysis, parameter
-sweeps and layouts. MVP per the brief: one known definition, three to six
-approved stages, paired captures.
+preview image Grasshopper saves; and the prioritized review set.
+
+**Staged capture (`rhino/axial-capture.py`, `docs/RHINO.md`).** In Rhino 7 or
+8, on the open definition: steps ordered by dataflow, each shown alone and
+captured with one fixed camera, display mode and picture size; steps without
+geometry recorded with their values; warnings and errors per step; a manifest
+tying every picture to its component and the definition's SHA-256; a contact
+sheet. Previews, selection and the modified flag are restored and nothing is
+saved.
+
+Still needed: the captures shown in the app beside the map, Grasshopper canvas
+captures per step, charts for number and list steps, human overrides of the
+stage sequence, batch runs over the review set, Karamba3D-specific analysis,
+parameter sweeps and publication layouts.

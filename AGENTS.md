@@ -30,6 +30,12 @@ The repo is public. Keep the researcher's name and personal details out of it.
 - **Never claim completeness you didn't check.** Every place the scan skipped
   or couldn't read is recorded as an issue with a reason and advice.
 - **A file whose inside can't be read is "inconclusive", never "not related".**
+- **The Rhino script leaves no trace.** It only toggles previews, and puts back
+  every preview, the preview mode and filter, the selection and the modified
+  flag in a `finally`. It never saves the definition. Keep it IronPython 2.7
+  compatible (Rhino 7): no f-strings, no `nonlocal`; check every new Rhino or
+  Grasshopper call against the 7.x XML docs in the `Grasshopper` and
+  `RhinoCommon` NuGet packages, since nobody here can run Rhino.
 
 ## Layout
 
@@ -45,6 +51,7 @@ The repo is public. Keep the researcher's name and personal details out of it.
 | `core/src/export.rs` | The report folder: the spec's CSVs, merged SQLite, `REVIEW_SET.json`. |
 | `core/src/explain.rs` | The text extract and system prompt for AI explanations. |
 | `core/src/map.rs` | The map of one definition, drawn only from what the file saved: components at their canvas positions, wires port to port, groups in their own colours, search-word matches marked, plus Grasshopper's own preview image. Rendered by `src/components/DefinitionMap.tsx`. |
+| `rhino/axial-capture.py` | Runs inside Rhino 7/8 (IronPython 2.7): one picture per component in dataflow order, each showing only that component's preview, plus `index.html`, `manifest.json` and `log.txt`. Attached to every release. See `docs/RHINO.md`. |
 | `src-tauri/` | The Tauri 2 app: commands, settings, AI calls, updater. |
 | `src/` | The React interface. `mock.ts` stands in for the backend in a plain browser. |
 | `docs/` | Spec status, install guides, releasing, and the download page (GitHub Pages). |
@@ -91,8 +98,9 @@ on. A paid Developer ID (or a stable self-signed identity) would fix both.
 
 ## Not built yet (see docs/SPEC.md)
 
-- Agent 02 (the interpreter): solving definitions in Rhino and capturing the
-  geometry stage by stage needs a Rhino 8 plugin. The canvas map, dependency
-  graph and dataflow order are already there; `REVIEW_SET.json` is its input.
+- Agent 02 (the interpreter): the step-by-step capture exists as a Rhino
+  script. Still to do: showing the captures inside the app beside the map,
+  capturing the Grasshopper canvas per step, charts for number steps,
+  parameter sweeps, and batch runs over `REVIEW_SET.json`.
 - Resumable scans, `.rar/.7z` contents, Time Machine backups, text inside `.3dm`.
 - A shared folder that merges the two laptops without moving a file by hand.

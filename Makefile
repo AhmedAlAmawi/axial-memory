@@ -16,6 +16,7 @@ check:
 	pnpm typecheck
 	pnpm build:ui
 	cargo test -p axial-core -p axial-memory
+	python3 rhino/test_axial_capture.py
 
 # A local Mac build for this machine's architecture (needs the update signing key).
 build:

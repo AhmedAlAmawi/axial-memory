@@ -56,3 +56,13 @@ jobs:
           updaterJsonPreferNsis: true
           releaseAssetNamePattern: ${{ matrix.assets }}
           args: ${{ matrix.args }}
+
+  rhino-script:
+    name: Rhino capture script
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: gh release upload "$GITHUB_REF_NAME" rhino/axial-capture.py --clobber
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
