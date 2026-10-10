@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Axial Memory — download</title>
+    <meta name="description" content="Finds every Grasshopper file on your computer and shows which ones belong to the palm research." />
+    <style>
+      :root {
+        --paper: #f5f2ea;
+        --surface: #fffdf8;
+        --ink: #1d1c1a;
+        --muted: #6f6a60;
+        --line: #e3ddd0;
+        --accent: #2e5a45;
+        --gold-soft: #f4ead5;
+        --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+        --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; background: var(--paper); color: var(--ink); font: 16px/1.55 var(--sans); }
+      main { max-width: 820px; margin: 0 auto; padding: 56px 28px 80px; }
+      .brand { display: flex; align-items: center; gap: 12px; font-family: var(--serif); font-size: 20px; }
+      .brand svg { fill: var(--accent); }
+      h1 { font-family: var(--serif); font-weight: 500; font-size: 42px; line-height: 1.12; margin: 40px 0 12px; letter-spacing: -0.01em; }
+      h2 { font-family: var(--serif); font-weight: 500; font-size: 22px; margin: 0 0 10px; }
+      .lede { font-size: 18px; color: var(--muted); max-width: 640px; }
+      .downloads { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 34px 0; }
+      .download { display: block; text-decoration: none; color: inherit; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 22px 24px; }
+      .download strong { display: block; font-size: 19px; margin-bottom: 4px; }
+      .download span { color: var(--muted); font-size: 14px; }
+      .download.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+      .download.primary span { color: rgba(255, 255, 255, 0.82); }
+      .card { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 24px 28px; margin: 18px 0; }
+      .card.note { background: var(--gold-soft); border-color: transparent; }
+      ol { padding-left: 22px; margin: 8px 0 0; }
+      li { margin-bottom: 8px; }
+      .muted { color: var(--muted); font-size: 14px; }
+      @media (max-width: 640px) { .downloads { grid-template-columns: 1fr; } h1 { font-size: 34px; } }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="brand">
+        <svg width="30" height="30" viewBox="0 0 100 100" aria-hidden="true" id="mark"></svg>
+        Axial Memory
+      </div>
+      <h1>Find every Grasshopper file on your computer.</h1>
+      <p class="lede">
+        It searches the whole computer, reads inside each definition without opening Rhino, and shows which ones belong
+        to the palm research, with the reason for each. It only reads: nothing is changed, moved or uploaded.
+      </p>
+
+      <div class="downloads">
+        <a class="download" id="mac" href="https://github.com/AhmedAlAmawi/axial-memory/releases/latest/download/Axial-Memory-Mac.dmg">
+          <strong>Download for Mac</strong>
+          <span>macOS 10.15 or newer · Apple silicon and Intel</span>
+        </a>
+        <a class="download" id="win" href="https://github.com/AhmedAlAmawi/axial-memory/releases/latest/download/Axial-Memory-Windows-setup.exe">
+          <strong>Download for Windows</strong>
+          <span>Windows 10 or 11</span>
+        </a>
+      </div>
+
+      <section class="card">
+        <h2>Installing on a Mac</h2>
+        <ol>
+          <li>Open the downloaded file and drag <strong>Axial Memory</strong> into <strong>Applications</strong>.</li>
+          <li>Double-click it in Applications. The Mac says it can't check the app: click <strong>Done</strong>.</li>
+          <li>
+            Open <strong>System Settings → Privacy &amp; Security</strong>, scroll to <em>"Axial Memory" was blocked</em>,
+            click <strong>Open Anyway</strong>, then <strong>Open Anyway</strong> again and enter your password.
+          </li>
+          <li>While it searches, click <strong>Allow</strong> when the Mac asks about folders.</li>
+        </ol>
+        <p class="muted">Only the first time. Updates install themselves from inside the app.</p>
+      </section>
+
+      <section class="card">
+        <h2>Installing on Windows</h2>
+        <ol>
+          <li>Open the downloaded file.</li>
+          <li>If Windows says <em>"Windows protected your PC"</em>, click <strong>More info</strong>, then <strong>Run anyway</strong>.</li>
+          <li>Follow the installer. No administrator password is needed.</li>
+        </ol>
+        <p class="muted">Only the first time. Updates install themselves from inside the app.</p>
+      </section>
+
+      <section class="card note">
+        <h2>Two laptops</h2>
+        <p>
+          Install it on both and search each. On one, open <strong>Laptops</strong> and click
+          <strong>Save this laptop's scan</strong>; send that file to yourself; on the other, click
+          <strong>Add the other laptop's scan</strong>. Everything then shows together, with copies found on both.
+        </p>
+      </section>
+    </main>
+    <script>
+      const mark = document.getElementById("mark");
+      for (let i = 1; i <= 64; i++) {
+        const a = i * 2.39996323, r = 4.6 * Math.sqrt(i);
+        const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+        c.setAttribute("cx", 50 + r * Math.cos(a));
+        c.setAttribute("cy", 50 + r * Math.sin(a));
+        c.setAttribute("r", 1.1 + i / 26);
+        mark.appendChild(c);
+      }
+      const ua = navigator.userAgent;
+      document.getElementById(/Windows/i.test(ua) ? "win" : "mac").classList.add("primary");
+    </script>
+  </body>
+</html>

@@ -1,0 +1,58 @@
+name: Release
+
+# Push a tag like v0.2.0 (`make release VERSION=0.2.0`). Builds the Mac and
+# Windows installers, publishes them, and updates latest.json so installed
+# copies offer the update.
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Mac
+            os: macos-latest
+            args: --target universal-apple-darwin --bundles app,dmg
+            assets: Axial-Memory-Mac[ext]
+          - name: Windows
+            os: windows-latest
+            args: --bundles nsis
+            assets: Axial-Memory-Windows[setup][ext]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.os == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+      - uses: Swatinem/rust-cache@v2
+      - run: pnpm install --frozen-lockfile
+      - uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: Axial Memory ${{ github.ref_name }}
+          releaseBody: |
+            Mac: download Axial-Memory-Mac.dmg. Windows: download Axial-Memory-Windows-setup.exe.
+            Copies already installed offer this update themselves.
+          releaseDraft: false
+          prerelease: false
+          uploadUpdaterJson: true
+          updaterJsonPreferNsis: true
+          releaseAssetNamePattern: ${{ matrix.assets }}
+          args: ${{ matrix.args }}

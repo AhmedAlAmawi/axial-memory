@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>NSDesktopFolderUsageDescription</key>
+  <string>Axial Memory looks for Grasshopper files on your Desktop. It only reads them: nothing is changed, moved or uploaded.</string>
+  <key>NSDocumentsFolderUsageDescription</key>
+  <string>Axial Memory looks for Grasshopper files in Documents. It only reads them: nothing is changed, moved or uploaded.</string>
+  <key>NSDownloadsFolderUsageDescription</key>
+  <string>Axial Memory looks for Grasshopper files in Downloads. It only reads them: nothing is changed, moved or uploaded.</string>
+  <key>NSRemovableVolumesUsageDescription</key>
+  <string>Axial Memory looks for Grasshopper files on connected drives. It only reads them: nothing is changed, moved or uploaded.</string>
+  <key>NSNetworkVolumesUsageDescription</key>
+  <string>Axial Memory looks for Grasshopper files on network drives you turn on. It only reads them.</string>
+  <key>NSFileProviderDomainUsageDescription</key>
+  <string>Axial Memory checks the names of files in iCloud Drive, Dropbox, OneDrive and Google Drive. It doesn't download them.</string>
+</dict>
+</plist>
